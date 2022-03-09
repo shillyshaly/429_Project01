@@ -26,7 +26,7 @@ func handleConnection(conn net.Conn) {
 
 	req, _ := parseRequest(conn)
 	dir, _ := generateResponse(req)
-	sendResponse(dir)
+	sendResponse(dir, conn)
 }
 
 type request struct {
@@ -68,8 +68,10 @@ func generateResponse(req *request) (string, error) {
 	return dir, nil
 }
 
-func sendResponse(dir string) {
-
+func sendResponse(dir string, conn net.Conn) {
+	content, err := ioutil.ReadFile("www/index.html")
+	handleError(err)
+	conn.Write(content)
 }
 
 func handleError(err error) {
