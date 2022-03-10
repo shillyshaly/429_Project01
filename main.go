@@ -27,8 +27,8 @@ func handleConnection(conn net.Conn) {
 }
 
 type request struct {
-	method string
-	//body     []byte
+	method   string
+	body     []byte
 	uri      string
 	protocol string
 }
