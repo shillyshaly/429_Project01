@@ -6,14 +6,24 @@ import (
 	"io/ioutil"
 	"net"
 	"os"
+	"strconv"
 	"strings"
 )
 
+//request struct to save items from the first line of request
+type request struct {
+	method   string
+	uri      string
+	protocol string
+}
+
 func main() {
-	listen, err := net.Listen("tcp", ":8080")
+	//listen on port 8080
+	listen, err := net.Listen("tcp", "127.0.0.1:8080")
 	handleError(err)
 	defer listen.Close()
 
+	//keep connection open
 	for {
 		conn, err := listen.Accept()
 		handleError(err)
@@ -23,28 +33,24 @@ func main() {
 
 func handleConnection(conn net.Conn) {
 	defer conn.Close()
-
 	req, _ := parseRequest(conn)
-	dir, _ := generateResponse(req)
-	sendResponse(dir, conn)
+	sendResponse(conn, req)
 }
 
-type request struct {
-	method string // GET, POST, etc.
-	//header textproto.MIMEHeader
-	body     []byte
-	uri      string // The raw URI from the request
-	protocol string // "HTTP/1.1"
-}
-
+//parse request and return request struct
 func parseRequest(conn net.Conn) (*request, error) {
+	//read from connection
 	b, _, err := bufio.NewReader(conn).ReadLine()
+
+	//create a new request struct
 	req := new(request)
 	handleError(err)
 
+	//split first line
 	sp := strings.Split(string(b), " ")
 	req.method, req.uri, req.protocol = sp[0], sp[1], sp[2]
 
+	//printing first line of request
 	fmt.Println("Method: " + req.method)
 	fmt.Println("URI: " + req.uri)
 	fmt.Println("Protocol: " + req.protocol)
@@ -52,26 +58,39 @@ func parseRequest(conn net.Conn) (*request, error) {
 	return req, nil
 }
 
-func generateResponse(req *request) (string, error) {
-	files, err := ioutil.ReadDir("www")
+//take request and form response
+func sendResponse(conn net.Conn, req *request) {
+	//save content from user chosen file if exists
+	content, _ := ioutil.ReadFile("www" + req.uri)
+
+	//save 404 file
+	dne, err := ioutil.ReadFile("www/404.html")
 	handleError(err)
 
-	var dir string
+	//for GET or HEAD request
+	if req.method == "GET" || req.method == "HEAD" {
 
-	for _, file := range files {
-		if req.method == "GET" || req.method == "HEAD" {
-			if strings.Contains("/"+file.Name(), req.uri) {
-				dir = file.Name()
-			}
+		//if file doesn't exist
+		if _, err := os.Stat("www" + req.uri); os.IsNotExist(err) {
+			//save 404 page info
+			info, _ := os.Stat("www/404.html")
+			len := strconv.FormatInt(info.Size(), 10)
+
+			//send response header
+			b := []byte("HTTP/1.1 404 DoesNotExit\r\nContent-Length: " + len + "\r\nServer: cihttp\r\n\r\n" + string(dne))
+			conn.Write(b)
+		} else {
+			//save found page info
+			info, _ := os.Stat("www" + req.uri)
+			fmt.Println(info.ModTime())
+			len := strconv.FormatInt(info.Size(), 10)
+
+			//send response header
+			b := []byte("HTTP/1.1 200 OK\r\nContent-Length:" + len + "\r\nServer: cihttp\r\n\r\n" + string(content))
+			conn.Write(b)
 		}
 	}
-	return dir, nil
-}
-
-func sendResponse(dir string, conn net.Conn) {
-	content, err := ioutil.ReadFile("www/index.html")
-	handleError(err)
-	conn.Write(content)
+	conn.Close()
 }
 
 func handleError(err error) {
@@ -81,8 +100,8 @@ func handleError(err error) {
 	}
 }
 
-//accept()  done
-//parseRequest()  done
+//accept()
+//parseRequest()
 //generateResponse(___)
 //sendResponse()
 //close()
