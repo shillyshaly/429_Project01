@@ -3,7 +3,6 @@ package main
 import (
 	"bufio"
 	"fmt"
-	"io/ioutil"
 	"net"
 	"os"
 	"strings"
@@ -25,7 +24,6 @@ func handleConnection(conn net.Conn) {
 	defer conn.Close()
 
 	req, _ := parseRequest(conn)
-	generateResponse(req)
 	sendResponse(conn, req)
 }
 
@@ -51,28 +49,20 @@ func parseRequest(conn net.Conn) (*request, error) {
 	return req, nil
 }
 
-func generateResponse(req *request) (string, error) {
-	files, err := ioutil.ReadDir("www")
+func sendResponse(conn net.Conn, req *request) {
+	content, _ := os.ReadFile("www" + req.uri)
+
+	dne, err := os.ReadFile("www/404.html")
 	handleError(err)
 
-	var dir string
-
-	for _, file := range files {
-		if req.method == "GET" || req.method == "HEAD" {
-			if strings.Contains("/"+file.Name(), req.uri) {
-				dir = file.Name()
-			}
-		}
+	if _, err := os.Stat("www" + req.uri); os.IsNotExist(err) {
+		b := []byte("HTTP/1.1 404 DoesNotExit\r\n\r\n" + string(dne))
+		conn.Write(b)
+	} else {
+		b := []byte("HTTP/1.1 200 OK\r\n\r\n" + string(content))
+		conn.Write(b)
 	}
-	return dir, nil
-}
-
-func sendResponse(conn net.Conn, req *request) {
-	content, _ := os.ReadFile("www/" + req.uri)
-
-	//handleError(err)
-	b := []byte("HTTP/1.1 200 OK\r\n\r\n" + string(content))
-	conn.Write(b)
+	conn.Close()
 
 }
 
@@ -82,16 +72,6 @@ func handleError(err error) {
 		os.Exit(2)
 	}
 }
-
-//dne, err := os.ReadFile("www/404.html")
-
-//if _, err := os.Stat("www" + req.uri); os.IsNotExist(err) {
-//b := []byte("HTTP/1.1 404 DoesNotExit\r\n\r\n" + string(dne))
-//conn.Write(b)
-//} else {
-//b := []byte("HTTP/1.1 200 OK\r\n\r\n" + string(content))
-//conn.Write(b)
-//}
 
 //accept()  done
 //parseRequest()  done
