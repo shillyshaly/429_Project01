@@ -50,7 +50,6 @@ func parseRequest(conn net.Conn) (*request, error) {
 
 func sendResponse(conn net.Conn, req *request) {
 	content, _ := os.ReadFile("www" + req.uri)
-
 	dne, err := os.ReadFile("www/404.html")
 	handleError(err)
 
