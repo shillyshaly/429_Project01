@@ -25,16 +25,15 @@ func handleConnection(conn net.Conn) {
 	defer conn.Close()
 
 	req, _ := parseRequest(conn)
-	dir, _ := generateResponse(req)
-	sendResponse(dir, conn)
+	generateResponse(req)
+	sendResponse(conn, req)
 }
 
 type request struct {
-	method string // GET, POST, etc.
-	//header textproto.MIMEHeader
+	method   string
 	body     []byte
-	uri      string // The raw URI from the request
-	protocol string // "HTTP/1.1"
+	uri      string
+	protocol string
 }
 
 func parseRequest(conn net.Conn) (*request, error) {
@@ -68,10 +67,13 @@ func generateResponse(req *request) (string, error) {
 	return dir, nil
 }
 
-func sendResponse(dir string, conn net.Conn) {
-	content, err := ioutil.ReadFile("www/index.html")
-	handleError(err)
-	conn.Write(content)
+func sendResponse(conn net.Conn, req *request) {
+	content, _ := os.ReadFile("www/" + req.uri)
+
+	//handleError(err)
+	b := []byte("HTTP/1.1 200 OK\r\n\r\n" + string(content))
+	conn.Write(b)
+
 }
 
 func handleError(err error) {
@@ -80,6 +82,16 @@ func handleError(err error) {
 		os.Exit(2)
 	}
 }
+
+//dne, err := os.ReadFile("www/404.html")
+
+//if _, err := os.Stat("www" + req.uri); os.IsNotExist(err) {
+//b := []byte("HTTP/1.1 404 DoesNotExit\r\n\r\n" + string(dne))
+//conn.Write(b)
+//} else {
+//b := []byte("HTTP/1.1 200 OK\r\n\r\n" + string(content))
+//conn.Write(b)
+//}
 
 //accept()  done
 //parseRequest()  done
