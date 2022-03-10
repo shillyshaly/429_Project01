@@ -22,7 +22,6 @@ func main() {
 
 func handleConnection(conn net.Conn) {
 	defer conn.Close()
-
 	req, _ := parseRequest(conn)
 	sendResponse(conn, req)
 }
